@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS
+        "src/lua_module_sci.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        cap_lua
+        esp_driver_i2c
+        lua_driver_i2c
+    PRIV_REQUIRES
+        esp_timer
+)

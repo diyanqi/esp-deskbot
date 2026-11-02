@@ -1,0 +1,100 @@
+{
+  "services": [
+    {
+      "serviceType": "Posture",
+      "description": "坐姿检测状态",
+      "commands": null,
+      "properties": [
+        {
+          "propertyName": "personDetected",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "postureStatus",
+          "dataType": "string",
+          "required": true,
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "maxLength": 16,
+          "method": "R",
+          "unit": null,
+          "enumList": [
+            "good",
+            "warning",
+            "bad",
+            "unknown"
+          ]
+        },
+        {
+          "propertyName": "postureSummary",
+          "dataType": "string",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "maxLength": 128,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "issueCount",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "alert",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "detecting",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "lastSeq",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        }
+      ]
+    }
+  ]
+}

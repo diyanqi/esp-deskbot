@@ -1,0 +1,1164 @@
+openapi: 3.0.3
+info:
+  title: IoTDA Data Collect Server API
+  version: 1.0.0
+  description: |
+    Receives Huawei Cloud IoTDA HTTP/HTTPS push notifications and exposes a
+    read-only query API backed by PostgreSQL.
+
+    All query endpoints under /api/v1 require a Bearer token when API_TOKEN is
+    configured. The /data/push endpoint uses the IoTDA signature headers
+    timestamp, nonce and signature instead.
+servers:
+  - url: https://116.62.55.142:11294
+    description: Production (HTTPS)
+  - url: http://127.0.0.1:11294
+    description: Local development
+tags:
+  - name: IoTDA
+  - name: Devices
+  - name: Telemetry
+  - name: Events
+  - name: Insights
+  - name: AI
+  - name: Frames
+  - name: Demo
+  - name: Messages
+  - name: Health
+
+paths:
+  /data/push:
+    post:
+      tags: [IoTDA]
+      summary: Receive an IoTDA push notification
+      description: |
+        Validates the IoTDA token signature, stores the raw notification and
+        normalizes device.property notifications into telemetry.
+
+        Signature: sha256(sort([token, timestamp, nonce]).join("")) in lowercase hex.
+      operationId: receiveIoTDAPush
+      parameters:
+        - name: timestamp
+          in: header
+          required: true
+          schema: { type: string, example: "1675654743514" }
+        - name: nonce
+          in: header
+          required: true
+          schema: { type: string, example: "8b9b796d388d49bba43adaa53aaf5bc4" }
+        - name: signature
+          in: header
+          required: true
+          schema: { type: string, example: "2ff821fb8a976ede7d06434395ec8c25e4100bff8b3d12d8099ef7e30b58bd4c" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushEnvelope'
+            examples:
+              propertyReport:
+                summary: Device property report
+                value:
+                  resource: device.property
+                  event: report
+                  event_time: "20261102T090000Z"
+                  event_time_ms: "2026-11-02T09:00:00.000Z"
+                  request_id: req-1
+                  notify_data:
+                    header:
+                      device_id: 6ae74bcd7f2e6c302fa9194e_hbot
+                      node_id: hbot
+                      product_id: 6ae74bcd7f2e6c302fa9194e
+                    body:
+                      services:
+                        - service_id: Environment
+                          properties:
+                            temperature: 0
+                            humidity: 0
+                            light: 62
+                            sound: 0
+                          event_time: "20261102T090000Z"
+              deviceStatus:
+                summary: Device status update
+                value:
+                  resource: device.status
+                  event: update
+                  event_time: "20261102T090000Z"
+                  notify_data:
+                    header:
+                      device_id: 6ae74bcd7f2e6c302fa9194e_hbot
+                    body:
+                      status: ONLINE
+                      last_online_time: "20261102T090000Z"
+                      status_update_time: "2026-11-02T09:00:00.815Z"
+      responses:
+        '200':
+          description: Notification stored (or already processed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResponse'
+        '400':
+          description: Invalid JSON or missing required fields
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401':
+          description: Missing or invalid signature
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '413':
+          description: Request body too large
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          description: Persistence failure
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /api/v1/devices:
+    get:
+      tags: [Devices]
+      summary: List devices
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Case-insensitive substring of device_id or node_id
+        - name: status
+          in: query
+          schema: { type: string, example: ONLINE }
+      responses:
+        '200':
+          description: Device list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceListResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/devices/{device_id}:
+    get:
+      tags: [Devices]
+      summary: Get one device
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DeviceID'
+      responses:
+        '200':
+          description: Device detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceDetailResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/devices/{device_id}/latest:
+    get:
+      tags: [Telemetry]
+      summary: Latest value per service/property
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DeviceID'
+        - name: service_id
+          in: query
+          schema: { type: string }
+        - name: property
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Latest telemetry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LatestResponse' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/devices/{device_id}/telemetry:
+    get:
+      tags: [Telemetry]
+      summary: Device telemetry time series
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DeviceID'
+        - $ref: '#/components/parameters/ServiceID'
+        - $ref: '#/components/parameters/Property'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Telemetry rows ordered newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TelemetryListResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/telemetry:
+    get:
+      tags: [Telemetry]
+      summary: Cross-device telemetry query
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/ServiceID'
+        - $ref: '#/components/parameters/Property'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Telemetry rows ordered newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TelemetryListResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/devices/{device_id}/series:
+    get:
+      tags: [Telemetry]
+      summary: Aggregated numeric series
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DeviceID'
+        - $ref: '#/components/parameters/ServiceIDRequired'
+        - $ref: '#/components/parameters/PropertyRequired'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: bucket
+          in: query
+          schema:
+            type: string
+            enum: [minute, hour, day, week]
+            default: hour
+      responses:
+        '200':
+          description: Aggregated series
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SeriesResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/events:
+    get:
+      tags: [Events]
+      summary: Raw IoTDA push events
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          schema: { type: string }
+        - name: resource
+          in: query
+          schema: { type: string, example: device.property }
+        - name: event
+          in: query
+          schema: { type: string, example: report }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: include_raw
+          in: query
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Raw events
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventListResponse' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/insights:
+    get:
+      tags: [Insights]
+      summary: Parent dashboard aggregates
+      description: Returns the 24h summary, 7x24 heatmap, 5-minute replay timeline and risk windows.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: hours
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 168, default: 24 }
+      responses:
+        '200':
+          description: Aggregated insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Insights' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/ai/report:
+    post:
+      tags: [AI]
+      summary: Generate a parent-facing AI health report
+      description: Calls an OpenAI-compatible endpoint (default gpt-4o) and falls back to a deterministic local report on failure.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AIReportRequest' }
+      responses:
+        '200':
+          description: Structured health report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/AIReport' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/frames:
+    post:
+      tags: [Frames]
+      summary: Upload an annotated posture frame
+      description: Multipart upload from the local analysis service. Keeps the newest 80 frames per device.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [device_id, image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                device_id:
+                  type: string
+                captured_at:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                  enum: [good, warning, bad, unknown]
+                summary:
+                  type: string
+                person_detected:
+                  type: boolean
+                request_id:
+                  type: string
+                metadata:
+                  type: string
+                  description: JSON string
+      responses:
+        '201':
+          description: Frame stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/PostureFrame' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+    get:
+      tags: [Frames]
+      summary: List recent posture frames
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 12 }
+      responses:
+        '200':
+          description: Recent frames
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/PostureFrame' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/frames/latest:
+    get:
+      tags: [Frames]
+      summary: Latest posture frame metadata
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Latest frame
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/PostureFrame' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/frames/{frame_id}/image:
+    get:
+      tags: [Frames]
+      summary: Annotated frame image bytes
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: frame_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: JPEG/PNG image
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/demo/scenario:
+    post:
+      tags: [Demo]
+      summary: Inject a demo posture scenario
+      description: Requires DEMO_ENABLED=true. The scenario goes through the real IoTDA Parse and Ingest path.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DemoScenarioRequest' }
+      responses:
+        '200':
+          description: Scenario inserted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      inserted: { type: boolean }
+                      device_id: { type: string }
+                      status: { type: string }
+                      summary: { type: string }
+                      request_id: { type: string }
+                      event_time: { type: string, format: date-time }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: demo_disabled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/messages:
+    get:
+      tags: [Messages]
+      summary: List family messages
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+      responses:
+        '200':
+          description: Messages newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+    post:
+      tags: [Messages]
+      summary: Send a parent or child message
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMessageRequest' }
+      responses:
+        '201':
+          description: Message created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Message' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/device/messages:
+    get:
+      tags: [Messages]
+      summary: ESP polls undelivered messages
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Undelivered messages oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Message' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /api/v1/device/messages/ack:
+    post:
+      tags: [Messages]
+      summary: ESP acknowledges displayed messages
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AckMessagesRequest' }
+      responses:
+        '200':
+          description: Number of messages acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: integer, format: int64 }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /readyz:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        '200':
+          description: Database is reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ready }
+        '503':
+          $ref: '#/components/responses/Unavailable'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    DeviceID:
+      name: device_id
+      in: path
+      required: true
+      schema: { type: string }
+    ServiceID:
+      name: service_id
+      in: query
+      schema: { type: string }
+    ServiceIDRequired:
+      name: service_id
+      in: query
+      required: true
+      schema: { type: string }
+    Property:
+      name: property
+      in: query
+      schema: { type: string }
+    PropertyRequired:
+      name: property
+      in: query
+      required: true
+      schema: { type: string }
+    From:
+      name: from
+      in: query
+      schema: { type: string }
+      description: RFC3339, YYYY-MM-DD, or IoTDA timestamp (20261102T090000Z)
+    To:
+      name: to
+      in: query
+      schema: { type: string }
+      description: Exclusive upper bound
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+
+  responses:
+    BadRequest:
+      description: Invalid arguments
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    TooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Internal:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unavailable:
+      description: Database unavailable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    PushEnvelope:
+      type: object
+      required: [resource, notify_data]
+      properties:
+        resource:
+          type: string
+          example: device.property
+        event:
+          type: string
+          example: report
+        event_time:
+          type: string
+          example: "20261102T090000Z"
+        event_time_ms:
+          type: string
+          example: "2026-11-02T09:00:00.000Z"
+        request_id:
+          type: string
+        notify_data:
+          $ref: '#/components/schemas/NotifyData'
+
+    NotifyData:
+      type: object
+      required: [header, body]
+      properties:
+        header:
+          $ref: '#/components/schemas/PushHeader'
+        body:
+          type: object
+          additionalProperties: true
+
+    PushHeader:
+      type: object
+      properties:
+        app_id: { type: string }
+        device_id: { type: string }
+        node_id: { type: string }
+        product_id: { type: string }
+        gateway_id: { type: string }
+        tags:
+          type: array
+          items: { $ref: '#/components/schemas/Tag' }
+
+    Tag:
+      type: object
+      required: [tag_key]
+      properties:
+        tag_key: { type: string }
+        tag_value: { type: string }
+
+    PropertyReportBody:
+      type: object
+      required: [services]
+      properties:
+        services:
+          type: array
+          items:
+            type: object
+            required: [service_id, properties]
+            properties:
+              service_id: { type: string, example: Environment }
+              event_time: { type: string, example: "20261102T090000Z" }
+              properties:
+                type: object
+                additionalProperties: true
+
+    DeviceStatusBody:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ONLINE, OFFLINE, ABNORMAL, FROZEN]
+        last_online_time: { type: string }
+        status_update_time: { type: string }
+
+    PushResponse:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        inserted: { type: boolean }
+
+    Pagination:
+      type: object
+      properties:
+        limit: { type: integer, example: 100 }
+        offset: { type: integer, example: 0 }
+        has_more: { type: boolean }
+        total:
+          type: integer
+          format: int64
+          description: Only present on the device list endpoint
+
+    Device:
+      type: object
+      properties:
+        device_id: { type: string }
+        node_id: { type: string, nullable: true }
+        product_id: { type: string, nullable: true }
+        app_id: { type: string, nullable: true }
+        gateway_id: { type: string, nullable: true }
+        status: { type: string, nullable: true }
+        status_updated_at: { type: string, format: date-time, nullable: true }
+        last_online_at: { type: string, format: date-time, nullable: true }
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        tags:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/Tag' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DeviceListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Device' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    DeviceDetailResponse:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Device' }
+
+    TelemetryRow:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        device_id: { type: string }
+        service_id: { type: string }
+        property: { type: string }
+        value:
+          description: Any JSON value
+        value_type:
+          type: string
+          enum: [number, string, boolean, object, array, null, unknown]
+        value_num:
+          type: number
+          format: double
+          nullable: true
+        event_time: { type: string, format: date-time }
+        received_at: { type: string, format: date-time }
+        request_id: { type: string, nullable: true }
+
+    TelemetryListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryRow' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    LatestResponse:
+      type: object
+      properties:
+        device_id: { type: string }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TelemetryRow' }
+
+    SeriesPoint:
+      type: object
+      properties:
+        bucket: { type: string, format: date-time }
+        count: { type: integer, format: int64 }
+        avg: { type: number, format: double, nullable: true }
+        min: { type: number, format: double, nullable: true }
+        max: { type: number, format: double, nullable: true }
+
+    SeriesResponse:
+      type: object
+      properties:
+        device_id: { type: string }
+        service_id: { type: string }
+        property: { type: string }
+        bucket: { type: string, enum: [minute, hour, day, week] }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SeriesPoint' }
+
+    EventRow:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        resource: { type: string }
+        event: { type: string, nullable: true }
+        request_id: { type: string, nullable: true }
+        device_id: { type: string, nullable: true }
+        node_id: { type: string, nullable: true }
+        product_id: { type: string, nullable: true }
+        app_id: { type: string, nullable: true }
+        gateway_id: { type: string, nullable: true }
+        event_time: { type: string, format: date-time, nullable: true }
+        event_time_ms: { type: string, format: date-time, nullable: true }
+        tags:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/Tag' }
+        body:
+          type: object
+          additionalProperties: true
+        raw_payload:
+          type: object
+          additionalProperties: true
+          description: Only present when include_raw=true
+        received_at: { type: string, format: date-time }
+
+    EventListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EventRow' }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            request_id: { type: string }
+
+    InsightsSummary:
+      type: object
+      properties:
+        posture_samples: { type: integer, format: int64 }
+        good: { type: integer, format: int64 }
+        warning: { type: integer, format: int64 }
+        bad: { type: integer, format: int64 }
+        unknown: { type: integer, format: int64 }
+        good_rate: { type: number, format: double }
+        alert_rate: { type: number, format: double }
+        person_rate: { type: number, format: double }
+        alert_minutes: { type: integer, format: int64 }
+        alert_events: { type: integer, format: int64 }
+        sound_events: { type: integer, format: int64 }
+        avg_light: { type: number, format: double }
+        min_light: { type: number, format: double }
+        max_light: { type: number, format: double }
+        light_comfort: { type: number, format: double }
+        avg_rssi: { type: number, format: double }
+        avg_heap_kb: { type: number, format: double }
+        longest_bad_streak_minutes: { type: integer }
+
+    InsightsHourly:
+      type: object
+      properties:
+        bucket: { type: string, format: date-time }
+        good_rate: { type: number, format: double }
+        alert_rate: { type: number, format: double }
+        avg_light: { type: number, format: double }
+        samples: { type: integer, format: int64 }
+
+    InsightsHeatmap:
+      type: object
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: 1=Monday }
+        hour: { type: integer, minimum: 0, maximum: 23 }
+        good_rate: { type: number, format: double }
+        alert_rate: { type: number, format: double }
+        avg_light: { type: number, format: double }
+        samples: { type: integer, format: int64 }
+
+    InsightsTimelinePoint:
+      type: object
+      properties:
+        time: { type: string, format: date-time }
+        status: { type: string, enum: [good, warning, bad, unknown] }
+        alert: { type: boolean }
+        light: { type: number, format: double }
+        sound: { type: boolean }
+        person: { type: boolean }
+
+    InsightsRiskWindow:
+      type: object
+      properties:
+        weekday: { type: integer }
+        hour: { type: integer }
+        good_rate: { type: number, format: double }
+        alert_rate: { type: number, format: double }
+        avg_light: { type: number, format: double }
+        samples: { type: integer, format: int64 }
+
+    Insights:
+      type: object
+      properties:
+        device_id: { type: string }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        hours: { type: integer }
+        has_data: { type: boolean }
+        health_score: { type: integer, minimum: 0, maximum: 100 }
+        summary: { $ref: '#/components/schemas/InsightsSummary' }
+        hourly:
+          type: array
+          items: { $ref: '#/components/schemas/InsightsHourly' }
+        heatmap:
+          type: array
+          items: { $ref: '#/components/schemas/InsightsHeatmap' }
+        timeline:
+          type: array
+          items: { $ref: '#/components/schemas/InsightsTimelinePoint' }
+        risk_windows:
+          type: array
+          items: { $ref: '#/components/schemas/InsightsRiskWindow' }
+
+    AIReportRequest:
+      type: object
+      required: [device_id]
+      properties:
+        device_id: { type: string }
+        hours: { type: integer, minimum: 1, maximum: 168, default: 24 }
+
+    AIFinding:
+      type: object
+      properties:
+        title: { type: string }
+        detail: { type: string }
+        severity: { type: string, enum: [info, warn, alert] }
+
+    AIReport:
+      type: object
+      properties:
+        device_id: { type: string }
+        hours: { type: integer }
+        score: { type: integer, minimum: 0, maximum: 100 }
+        level: { type: string, enum: [excellent, good, attention, risk] }
+        headline: { type: string }
+        summary: { type: string }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/AIFinding' }
+        risk_windows:
+          type: array
+          items: { type: string }
+        suggestions:
+          type: array
+          items: { type: string }
+        encouragement: { type: string }
+        disclaimer: { type: string }
+        source: { type: string, enum: [ai, local] }
+        model: { type: string }
+        generated_at: { type: string, format: date-time }
+
+    PostureFrame:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        device_id: { type: string }
+        captured_at: { type: string, format: date-time }
+        status: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        person_detected: { type: integer, enum: [0, 1] }
+        request_id: { type: string, nullable: true }
+        image_mime: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+        created_at: { type: string, format: date-time }
+        image_url: { type: string }
+
+    DemoScenarioRequest:
+      type: object
+      required: [device_id, status]
+      properties:
+        device_id: { type: string }
+        status: { type: string, enum: [good, warning, bad, away] }
+        light: { type: number, format: double, default: 60 }
+        sound: { type: number, format: double, default: 0 }
+
+    Message:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        device_id: { type: string }
+        author: { type: string, enum: [parent, child] }
+        author_name: { type: string }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+        delivered_at: { type: string, format: date-time, nullable: true }
+        read_at: { type: string, format: date-time, nullable: true }
+
+    CreateMessageRequest:
+      type: object
+      required: [device_id, author, content]
+      properties:
+        device_id: { type: string }
+        author: { type: string, enum: [parent, child] }
+        author_name: { type: string, maxLength: 40 }
+        content: { type: string, minLength: 1, maxLength: 500 }
+
+    AckMessagesRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { type: integer, format: int64 }

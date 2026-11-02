@@ -1,0 +1,93 @@
+page {
+  min-height: 100%;
+  background: #05070c;
+  color: #e6edf7;
+  font-family: -apple-system, BlinkMacSystemFont, 'HarmonyOS Sans', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+view,
+text,
+button,
+input,
+picker,
+scroll-view,
+slider,
+switch,
+image,
+canvas {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  line-height: 1;
+  border-radius: 0;
+}
+
+button::after {
+  border: none;
+}
+
+.mono {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: #8b9bb4;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.72);
+  }
+}
+
+@keyframes blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  93%,
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

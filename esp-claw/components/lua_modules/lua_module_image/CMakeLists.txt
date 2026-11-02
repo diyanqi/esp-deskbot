@@ -1,0 +1,12 @@
+idf_component_register(
+    SRC_DIRS
+        "src"
+    INCLUDE_DIRS
+        "src"
+    REQUIRES
+        cap_lua
+        esp_new_jpeg
+        heap
+    PRIV_REQUIRES
+        esp_driver_ppa
+)

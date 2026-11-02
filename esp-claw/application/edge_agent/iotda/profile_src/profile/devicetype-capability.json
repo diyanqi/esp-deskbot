@@ -1,0 +1,28 @@
+{
+  "devices": [
+    {
+      "manufacturerId": "Espressif",
+      "manufacturerName": "Espressif Systems",
+      "model": "DeskHealthAssistant",
+      "protocolType": "MQTT",
+      "deviceType": "DeskHealthAssistant",
+      "serviceTypeCapabilities": [
+        {
+          "serviceId": "Environment",
+          "serviceType": "Environment",
+          "option": "Mandatory"
+        },
+        {
+          "serviceId": "Posture",
+          "serviceType": "Posture",
+          "option": "Mandatory"
+        },
+        {
+          "serviceId": "DeviceStatus",
+          "serviceType": "DeviceStatus",
+          "option": "Mandatory"
+        }
+      ]
+    }
+  ]
+}

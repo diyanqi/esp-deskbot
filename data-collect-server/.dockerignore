@@ -1,0 +1,7 @@
+.git
+.env
+certs
+bin
+pgdata
+*.log
+coverage.out

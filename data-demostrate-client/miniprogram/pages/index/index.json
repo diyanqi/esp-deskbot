@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "usingComponents": {
+    "line-chart": "/components/line-chart/line-chart",
+    "heatmap": "/components/heatmap/heatmap"
+  }
+}

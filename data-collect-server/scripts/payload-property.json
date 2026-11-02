@@ -1,0 +1,56 @@
+{
+  "resource": "device.property",
+  "event": "report",
+  "event_time": "__EVENT_TIME__",
+  "event_time_ms": "__EVENT_TIME_MS__",
+  "request_id": "test-push-1",
+  "notify_data": {
+    "header": {
+      "device_id": "__DEVICE_ID__",
+      "node_id": "hbot",
+      "product_id": "6ae74bcd7f2e6c302fa9194e",
+      "app_id": "app-1",
+      "gateway_id": "__DEVICE_ID__"
+    },
+    "body": {
+      "services": [
+        {
+          "service_id": "Environment",
+          "properties": {
+            "temperature": 0,
+            "humidity": 0,
+            "light": 62,
+            "sound": 0
+          },
+          "event_time": "__EVENT_TIME__"
+        },
+        {
+          "service_id": "Posture",
+          "properties": {
+            "personDetected": 1,
+            "postureStatus": "good",
+            "postureSummary": "坐姿良好",
+            "issueCount": 0,
+            "alert": 0,
+            "detecting": 0,
+            "lastSeq": 17
+          },
+          "event_time": "__EVENT_TIME__"
+        },
+        {
+          "service_id": "DeviceStatus",
+          "properties": {
+            "wifiConnected": 1,
+            "rssi": -55,
+            "uptime": 1234,
+            "freeHeap": 180000,
+            "reportInterval": 5,
+            "firmware": "0.1.0",
+            "lastReport": "__EVENT_TIME__"
+          },
+          "event_time": "__EVENT_TIME__"
+        }
+      ]
+    }
+  }
+}

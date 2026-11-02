@@ -1,0 +1,10 @@
+idf_component_register(
+    SRC_DIRS
+        "src"
+    INCLUDE_DIRS
+        "src"
+    REQUIRES
+        cap_lua
+        esp_board_manager
+        esp32-camera
+)

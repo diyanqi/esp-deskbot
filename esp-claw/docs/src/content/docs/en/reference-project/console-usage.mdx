@@ -1,0 +1,123 @@
+---
+title: Console usage
+description: "Serial REPL: session, Q&A, files, cap, and automation debug commands."
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from 'starlight-theme-nova/components'
+
+Connect the board over USB, use `idf.py monitor`, `minicom`, or the [web flasher](@lang/flash) Console to reach the `edge_agent` prompt (default `app> `).
+
+<Aside type="tip">
+  Logs scroll but you cannot type commands?
+  - Boards with both UART and USB-Serial JTAG: try the other port.
+  - Single-USB devices: try a firmware build with `Serial JTAG` in the name, or [build from source](@lang/reference-project/build-from-source) and adjust `Channel for console output` in menuconfig.
+</Aside>
+
+## Session and Q&A
+
+### Switch session
+
+Each `session` uses its own history file (see [Memory](@lang/reference-project/memory)). Long-term memory data is managed in the shared `memory/` directory.
+
+```sh
+session demo
+session
+```
+
+### Chat with the LLM
+
+`ask` starts a multi-turn chat with history. Add `--once` for a single turn that does not use session history.
+
+```sh
+ask list what you can do for me
+ask --once one-off question, do not use history
+```
+
+<Aside type="tip">
+  If the LLM was not fully configured at boot (missing key / model / backend_type), `claw_core` never starts and `ask` fails.
+  See [Configuration](@lang/reference-project/configuration) for required LLM fields.
+</Aside>
+
+## cap
+
+### List capabilities
+
+```sh
+cap list
+```
+
+### Invoke a capability
+
+The second argument must be valid JSON (mind quoting/escaping).
+
+```sh
+cap call get_current_time '{}'
+cap call list_dir '{"keyword":"scripts"}'
+```
+
+### Inspect capability groups
+
+A capability may expose many tools, which are organized into groups.
+
+```sh
+cap groups
+```
+
+## File listing
+
+`ls` recursively lists files under the DATA and SYSTEM roots. Its optional argument filters paths by keyword.
+
+```sh
+ls
+ls scripts
+```
+
+## skill
+
+`skill` lists the current Skill catalog. Add `--reload` to rescan the directories first.
+
+```sh
+skill
+skill --reload
+```
+
+## router
+
+```sh
+router --reload
+router --rules
+router --last
+```
+
+<LinkCard
+  href="@lang/reference-project/dataflow-and-automation#event-router-console-commands"
+  title="Dataflow and automation"
+  description="More commands and details in this doc"
+/>
+
+
+## Hardware resources: hwmap
+
+`hwmap` shows registered resources and their users; `hwmap query <key>` selects one resource. `EXCLUSIVE` permits at most one claim, while `SHARED` permits multiple claims. `USERS` is the current usage count and `CLAIM` is the usage credential ID. Registered idle resources show `(free)`; an unregistered key returns an error.
+
+```sh
+hwmap
+hwmap query gpio:1
+hwmap query bus:i2c0
+hwmap query device:display_lcd
+```
+
+Resources are registered at startup and claimed when Board Manager actually initializes each driver. Successful driver deinitialization releases its claim. Flash, PSRAM and console resources are outside this registry’s protection scope. Shared access reuses an existing hardware object and does not guarantee that arbitrary concurrent operations are safe.
+
+## Other registered commands
+
+Depending on the build configuration, `edge_agent` can also register `lua`, `scheduler`, `router`, `skill`, `hwmap`, and `wifi`.
+Type `help` in the Console for the full list.
+
+## System configuration
+
+For runtime Wi‑Fi / LLM edits, Web is often easier:
+
+<LinkCard href="@lang/tutorial/web-config" title="Web configuration" icon="laptop" description="Change settings and files from the LAN" />
+<LinkCard href="@lang/reference-project/configuration" title="Configuration" icon="settings" description="NVS keys and how values apply" />

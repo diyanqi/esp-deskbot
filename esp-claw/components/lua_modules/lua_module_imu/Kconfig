@@ -1,0 +1,15 @@
+menu "Lua IMU Module"
+
+    config LUA_MODULE_IMU_CHIP_BMI270
+        bool "BMI270 backend"
+        default y
+
+    config LUA_MODULE_IMU_CHIP_MPU6050
+        bool "MPU6050 backend"
+        default n
+
+    config LUA_MODULE_IMU_CHIP_ICM42670
+        bool "ICM42670 backend"
+        default n
+
+endmenu

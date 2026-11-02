@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "src/claw_skill.c"
+    INCLUDE_DIRS
+        "include"
+    PRIV_REQUIRES
+        claw_utils
+        freertos
+        espressif__cjson
+)

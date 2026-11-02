@@ -1,0 +1,44 @@
+.heat-scroll {
+  width: 100%;
+}
+
+.heat-grid {
+  width: 700rpx;
+  padding: 6rpx 0;
+}
+
+.heat-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 4rpx;
+}
+
+.heat-head {
+  margin-bottom: 6rpx;
+}
+
+.heat-day {
+  width: 68rpx;
+  flex: none;
+  color: #5b6b82;
+  font-size: 18rpx;
+  line-height: 28rpx;
+}
+
+.heat-hour {
+  width: 26rpx;
+  flex: none;
+  color: #5b6b82;
+  font-size: 14rpx;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.heat-cell {
+  width: 22rpx;
+  height: 22rpx;
+  margin-right: 4rpx;
+  flex: none;
+  border-radius: 5rpx;
+}

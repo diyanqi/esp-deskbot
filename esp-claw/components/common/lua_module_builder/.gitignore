@@ -1,0 +1,4 @@
+skills/*
+!skills/lua_package_authoring/
+!skills/lua_package_authoring/**
+tools/__pycache__/

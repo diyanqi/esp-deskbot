@@ -1,0 +1,4 @@
+<view class="chart-wrap" style="height:{{height}}px;">
+  <canvas type="2d" id="chart" class="chart"></canvas>
+  <view wx:if="{{points.length === 0 || points.length === 1}}" class="chart-empty">等待数据</view>
+</view>

@@ -1,0 +1,9 @@
+{
+  "device_id": "<device_id>",
+  "secret": "<device_secret>",
+  "host": "<instance_id>.st1.iotda-device.cn-north-4.myhuaweicloud.com",
+  "port": 8883,
+  "client_id": "<device_id>_0_0_<YYYYMMDDHH>",
+  "report_interval": 5,
+  "keepalive": 120
+}

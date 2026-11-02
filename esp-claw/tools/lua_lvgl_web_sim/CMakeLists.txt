@@ -1,0 +1,138 @@
+cmake_minimum_required(VERSION 3.14)
+project(lv_emscripten C CXX)
+
+get_filename_component(ESP_CLAW_ROOT "${PROJECT_SOURCE_DIR}/../.." ABSOLUTE)
+
+include(FetchContent)
+
+set(LV_CONF_PATH "${PROJECT_SOURCE_DIR}/lv_conf.h" CACHE FILEPATH "LVGL config file" FORCE)
+set(LV_CONF_INCLUDE_SIMPLE ON CACHE BOOL "Use simple lv_conf include" FORCE)
+
+FetchContent_Declare(
+    lvgl
+    GIT_REPOSITORY https://github.com/lvgl/lvgl.git
+    GIT_TAG v9.5.0
+)
+FetchContent_MakeAvailable(lvgl)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    set(ESP_CLAW_SIM_FETCH_TIMESTAMP_ARGS DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+endif()
+
+FetchContent_Declare(
+    lua
+    URL https://www.lua.org/ftp/lua-5.4.8.tar.gz
+    ${ESP_CLAW_SIM_FETCH_TIMESTAMP_ARGS}
+)
+FetchContent_MakeAvailable(lua)
+set(LUA_SRC_DIR ${lua_SOURCE_DIR}/src)
+set(LUA_SOURCES
+    ${LUA_SRC_DIR}/lapi.c
+    ${LUA_SRC_DIR}/lcode.c
+    ${LUA_SRC_DIR}/lctype.c
+    ${LUA_SRC_DIR}/ldebug.c
+    ${LUA_SRC_DIR}/ldo.c
+    ${LUA_SRC_DIR}/ldump.c
+    ${LUA_SRC_DIR}/lfunc.c
+    ${LUA_SRC_DIR}/lgc.c
+    ${LUA_SRC_DIR}/llex.c
+    ${LUA_SRC_DIR}/lmem.c
+    ${LUA_SRC_DIR}/lobject.c
+    ${LUA_SRC_DIR}/lopcodes.c
+    ${LUA_SRC_DIR}/lparser.c
+    ${LUA_SRC_DIR}/lstate.c
+    ${LUA_SRC_DIR}/lstring.c
+    ${LUA_SRC_DIR}/ltable.c
+    ${LUA_SRC_DIR}/ltm.c
+    ${LUA_SRC_DIR}/lundump.c
+    ${LUA_SRC_DIR}/lvm.c
+    ${LUA_SRC_DIR}/lzio.c
+    ${LUA_SRC_DIR}/lauxlib.c
+    ${LUA_SRC_DIR}/lbaselib.c
+    ${LUA_SRC_DIR}/lcorolib.c
+    ${LUA_SRC_DIR}/ldblib.c
+    ${LUA_SRC_DIR}/liolib.c
+    ${LUA_SRC_DIR}/lmathlib.c
+    ${LUA_SRC_DIR}/loadlib.c
+    ${LUA_SRC_DIR}/loslib.c
+    ${LUA_SRC_DIR}/lstrlib.c
+    ${LUA_SRC_DIR}/ltablib.c
+    ${LUA_SRC_DIR}/lutf8lib.c
+    ${LUA_SRC_DIR}/linit.c
+)
+
+set(ESP_CLAW_SIM_SOURCES
+    sim/esp_claw_sim.c
+    sim/sim_esp_compat.c
+    sim/lua_display_sim.c
+    sim/lua_audio_sim.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_color.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_dirty.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_core.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_raster.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_text.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src/display_bitmap.c
+    ${ESP_CLAW_ROOT}/components/common/esp_painter/font/basic_font_24.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_module_lvgl.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_core_widgets.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_image.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_line.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_complex_widgets.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_demos.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_eaf.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_events.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_font.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_extra_widgets.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_layout.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_methods.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_object.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_parse.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_runtime.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_style.c
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src/lua_lvgl_value.c
+    ${LUA_SOURCES}
+)
+
+# Embed the audio service in both normal and single-file shells.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/sim/audio.js")
+file(READ "${PROJECT_SOURCE_DIR}/sim/audio.js" SIM_AUDIO_JS)
+configure_file(esp_claw_shell.html esp_claw_shell.html @ONLY)
+
+# Keep SDL as a final-link option. Putting USE_SDL in global compile flags makes every parallel emcc compile try to initialize the same Emscripten port cache.
+set(ESP_CLAW_SIM_COMMON_LINK_FLAGS "-O3 --shell-file ${CMAKE_CURRENT_BINARY_DIR}/esp_claw_shell.html -s USE_SDL=2 -s ASYNCIFY=1 -s ASYNCIFY_STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=['ccall','FS']")
+set(ESP_CLAW_SIM_RUNTIME_ASSETS "--preload-file ${PROJECT_SOURCE_DIR}/sim_assets/fonts@/fonts --preload-file ${PROJECT_SOURCE_DIR}/sim_assets/audio.lua@/sim/audio.lua")
+set(ESP_CLAW_SIM_EMBED_ASSETS "--embed-file ${PROJECT_SOURCE_DIR}/sim_assets/fonts@/fonts --embed-file ${PROJECT_SOURCE_DIR}/sim_assets/audio.lua@/sim/audio.lua")
+
+function(configure_esp_claw_sim_target target_name)
+set_property(TARGET ${target_name} APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/esp_claw_shell.html" "${PROJECT_SOURCE_DIR}/sim_assets/audio.lua")
+target_include_directories(${target_name} PRIVATE
+    ${LUA_SRC_DIR}
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_display/src
+    ${ESP_CLAW_ROOT}/components/common/esp_painter/include
+    ${PROJECT_SOURCE_DIR}/sim/compat
+    ${lvgl_SOURCE_DIR}
+    ${ESP_CLAW_ROOT}/components/lua_modules/lua_module_lvgl/src
+)
+target_compile_definitions(${target_name} PRIVATE LUA_USE_C89 CONFIG_ESP_PAINTER_BASIC_FONT_24=1)
+target_compile_options(${target_name} PRIVATE -O3)
+target_link_libraries(${target_name}
+    lvgl
+    lvgl_examples
+    lvgl_demos
+    lvgl_thorvg
+)
+endfunction()
+
+add_executable(esp_claw_sim ${ESP_CLAW_SIM_SOURCES})
+configure_esp_claw_sim_target(esp_claw_sim)
+set_target_properties(esp_claw_sim PROPERTIES
+    SUFFIX ".html"
+    LINK_FLAGS "${ESP_CLAW_SIM_COMMON_LINK_FLAGS} ${ESP_CLAW_SIM_RUNTIME_ASSETS}"
+)
+
+add_executable(esp_claw_sim_release ${ESP_CLAW_SIM_SOURCES})
+configure_esp_claw_sim_target(esp_claw_sim_release)
+set_target_properties(esp_claw_sim_release PROPERTIES
+    SUFFIX ".html"
+    LINK_FLAGS "${ESP_CLAW_SIM_COMMON_LINK_FLAGS} ${ESP_CLAW_SIM_EMBED_ASSETS} -s SINGLE_FILE=1"
+)

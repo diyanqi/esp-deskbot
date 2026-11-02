@@ -1,0 +1,17 @@
+idf_component_register(
+    SRCS
+        "src/audio_analyzer.c"
+        "src/audio_converter.c"
+        "src/audio_device.c"
+        "src/audio_lua_utils.c"
+        "src/audio_player.c"
+        "src/audio_recorder.c"
+        "src/audio_sample_player.c"
+        "src/audio_uri.c"
+        "src/lua_module_audio.c"
+    INCLUDE_DIRS
+        "src"
+    REQUIRES
+        cap_lua
+        driver
+)

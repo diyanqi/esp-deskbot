@@ -1,0 +1,96 @@
+---
+title: cap_skill — Skill 工具
+description: Skill 激活、发布和移除工具，以及按会话开放 Capability Group 的机制。
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+源码：<LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/src/cap_skill_mgr.c" /> · 头文件：<LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/include/cap_skill_mgr.h" />
+
+## 定位
+
+`cap_skill_mgr` 是 `claw_skill` 的工具适配层。Skill 文件的扫描、校验、registry 和 session 激活状态由 `claw_skill` 管理；Capability 只负责解析工具输入、同步工具可见性和输出结果。
+
+## 工具分组
+
+| Group | 工具 | LLM 可见性 | 用途 |
+|---|---|---|---|
+| `cap_skill` | `activate_skill` | 默认可见 | 加载 Skill 指令，并为当前 session 开放其 `metadata.cap_groups` |
+| `cap_skill` | `list_skill` | 不可见 | 为 Console 或内部调用者输出完整 catalog |
+| `cap_skill_manage` | `publish_skill` | 激活管理 Skill 后可见 | 校验已经写入 DATA 的 runtime Skill 并刷新 registry |
+| `cap_skill_manage` | `remove_skill` | 激活管理 Skill 后可见 | 递归删除整个 runtime Skill 目录并刷新 registry |
+
+普通会话只需要 `activate_skill`。`skill_creator` 和 `skills_lab_downloader` 等管理类 Skill 通过声明 `cap_skill_manage`，按需开放发布和移除工具。
+
+## `activate_skill`
+
+输入：
+
+```json
+{"skill_id":"light_switch"}
+```
+
+执行后会读取完整 Skill 文档、记录当前 session 的激活状态、同步对应 Capability Group，并返回：
+
+```xml
+<skill_content name="light_switch">
+...完整 SKILL.md...
+</skill_content>
+```
+
+完整文档通过工具结果进入会话历史，系统提示词只保留稳定的 Skill catalog，有利于保持 prompt cache 前缀稳定。
+
+## `publish_skill`
+
+`publish_skill` 不创建或修改文件。调用前必须先把完整文件写到 DATA 根下的 `skills/<skill_id>/`：
+
+```json
+{"skill_id":"weather_alerts"}
+```
+
+固件根据 `skill_id` 推导固定文档路径，重新扫描 registry，并确认目标来自主 writable root。新建和更新使用同一个幂等发布流程，不需要先移除旧 Skill。
+
+发布成功后返回固定大小的简洁结果，避免 registry 已更新但工具结果因元数据过大而失败：
+
+```json
+{"ok":true,"skill_id":"weather_alerts"}
+```
+
+App 与 Skill 使用独立目录和 registry，`publish_skill` 不会创建、更新或重新加载 App。
+
+## `remove_skill`
+
+输入：
+
+```json
+{"skill_id":"weather_alerts"}
+```
+
+该操作只允许 writable root 中的 runtime Skill，System Skill 会被拒绝。实现会直接递归删除整个 Skill 目录，包括 `SKILL.md`、scripts、references 和 assets，然后刷新 registry。App 使用独立目录，不受 Skill 删除影响。删除过程不提供事务或回滚；文件系统中途失败时，目录可能只被部分删除。
+
+成功结果：
+
+```json
+{"ok":true,"skill_id":"weather_alerts"}
+```
+
+<Aside type="caution">
+  `remove_skill` 是破坏性操作。更新已有 Skill 时应修改文件后直接调用 `publish_skill`，不能先调用 `remove_skill`。
+</Aside>
+
+## 输入约束
+
+三个 LLM 工具使用一致的 `skill_id` 规则：长度为 1–63，只允许 ASCII 字母、数字、下划线和连字符。工具拒绝未知输入字段，AI 不需要也不能传入派生的 `file` 路径。
+
+## Console
+
+启用 `skill` Console 命令后可使用：
+
+```sh
+skill --catalog
+skill --publish weather_alerts
+skill --remove weather_alerts
+skill --activate weather_alerts --session default
+skill --list --session default
+```

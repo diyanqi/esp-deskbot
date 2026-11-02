@@ -1,0 +1,9 @@
+idf_component_register(
+    SRC_DIRS
+        "src"
+    INCLUDE_DIRS
+        "src"
+    REQUIRES
+        cap_lua
+        esp_driver_gpio
+)

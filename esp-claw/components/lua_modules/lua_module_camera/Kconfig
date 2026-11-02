@@ -1,0 +1,23 @@
+menu "Lua Camera Module"
+    config LUA_MODULE_CAMERA_BUFFER_COUNT
+        int "Camera buffer count"
+        range 1 16
+        default 2
+        help
+            Set the number of V4L2 buffers requested when opening the camera.
+
+    config LUA_MODULE_CAMERA_ENABLE_VFLIP
+        bool "Camera vertical flip"
+        default y
+        help
+            Set V4L2_CID_VFLIP to 1 when enabled or 0 when disabled whenever
+            camera.open() starts a camera stream.
+
+    config LUA_MODULE_CAMERA_ENABLE_HMIRROR
+        bool "Camera horizontal mirror"
+        default n
+        help
+            Set V4L2_CID_HFLIP to 1 when enabled or 0 when disabled whenever
+            camera.open() starts a camera stream.
+
+endmenu

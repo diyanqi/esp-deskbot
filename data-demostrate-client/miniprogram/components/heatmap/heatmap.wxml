@@ -1,0 +1,21 @@
+<scroll-view class="heat-scroll" scroll-x="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+  <view class="heat-grid">
+    <view class="heat-row heat-head">
+      <view class="heat-day"></view>
+      <view class="heat-hour" wx:for="{{hours}}" wx:key="value">{{item.label}}</view>
+    </view>
+    <view class="heat-row" wx:for="{{rows}}" wx:for-item="row" wx:key="day">
+      <view class="heat-day">{{row.dayName}}</view>
+      <view
+        class="heat-cell"
+        wx:for="{{row.cells}}"
+        wx:for-item="cell"
+        wx:key="hour"
+        style="background:{{cell.color}};opacity:{{cell.opacity}};"
+        data-day="{{cell.day}}"
+        data-hour="{{cell.hour}}"
+        bindtap="onCellTap"
+      ></view>
+    </view>
+  </view>
+</scroll-view>

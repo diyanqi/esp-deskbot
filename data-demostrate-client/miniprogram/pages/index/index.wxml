@@ -1,0 +1,610 @@
+<view class="page">
+  <view class="ambient">
+    <view class="ambient-orb orb-a"></view>
+    <view class="ambient-orb orb-b"></view>
+    <view class="ambient-orb orb-c"></view>
+  </view>
+
+  <view class="nav" style="padding-top:{{statusBarHeight}}px;height:{{navHeight}}px;">
+    <view class="nav-inner">
+      <view class="brand">
+        <view class="brand-mark">
+          <view class="brand-pupil"></view>
+        </view>
+        <view class="brand-copy">
+          <text class="brand-kicker">GROWTH GUARDIAN · MINI PROGRAM</text>
+          <view class="brand-title-row">
+            <text class="brand-title">成长守护</text>
+            <text class="parent-badge">家长端</text>
+          </view>
+          <text class="brand-sub">{{deviceLabel}} · 家长端</text>
+        </view>
+      </view>
+      <view class="nav-actions" style="right:{{capsuleRight}}px;top:{{statusBarHeight + 8}}px;">
+        <view class="nav-icon" bindtap="onRefresh">↻</view>
+        <view class="nav-icon" bindtap="openSettings">⚙</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view
+    class="tab-scroll"
+    scroll-y="{{true}}"
+    enhanced="{{true}}"
+    show-scrollbar="{{false}}"
+    refresher-enabled="{{true}}"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    style="padding-top:{{navHeight}}px;"
+  >
+    <view class="content">
+      <view wx:if="{{!online}}" class="network-banner">网络已断开，正在使用缓存数据</view>
+      <view wx:if="{{error}}" class="error-banner">{{error}}</view>
+
+      <!-- 总览 -->
+      <block wx:if="{{activeTab === 'overview'}}">
+        <view class="child-strip">
+          <view class="child-avatar">宇</view>
+          <view class="child-copy">
+            <text class="child-name">小宇</text>
+            <text class="child-meta">9 岁 · 三年级 · 演示档案</text>
+          </view>
+          <view class="live-block">
+            <text class="live-label">LIVE</text>
+            <text class="live-time">{{updatedAgo}}</text>
+          </view>
+        </view>
+
+        <view class="control-row">
+          <picker class="device-picker" mode="selector" range="{{deviceLabels}}" value="{{deviceIndex}}" bindchange="onDeviceChange">
+            <view class="picker-inner">
+              <text class="picker-text">{{deviceLabel}}</text>
+              <text class="picker-chevron">⌄</text>
+            </view>
+          </picker>
+          <view class="range-row">
+            <text
+              class="range-chip {{range === item ? 'active' : ''}}"
+              wx:for="{{ranges}}"
+              wx:key="*this"
+              data-range="{{item}}"
+              bindtap="onRangeChange"
+            >{{item}}</text>
+          </view>
+        </view>
+
+        <view wx:if="{{loading}}" class="card center-card">
+          <view class="spinner"></view>
+          <text class="center-text">正在连接成长守护数据…</text>
+        </view>
+
+        <view wx:elif="{{devices.length === 0}}" class="card empty-card">
+          <text class="empty-icon">◌</text>
+          <text class="empty-title">还没有孩子的坐姿数据</text>
+          <text class="empty-desc">真机与 Mac 需要在同一网络，并且 Go 服务监听 0.0.0.0:11294</text>
+          <text class="empty-url">{{apiBaseUrl}}</text>
+          <view class="empty-actions">
+            <button class="btn-primary btn-small" bindtap="openSettings">打开设置</button>
+            <button class="btn-ghost btn-small" bindtap="onRefresh">立即重试</button>
+          </view>
+        </view>
+
+        <block wx:else>
+          <view class="card hero-card">
+            <view class="card-head">
+              <text class="kicker">POSTURE / CHILD</text>
+              <text class="card-title">孩子当前坐姿</text>
+              <text class="card-sub">实时姿态识别 · 家长端守护</text>
+            </view>
+            <view class="hero-body">
+              <view class="face {{display.faceClass}}">
+                <view class="face-ring"></view>
+                <view class="face-eyes">
+                  <view class="face-eye"></view>
+                  <view class="face-eye"></view>
+                </view>
+                <view class="face-mouth"></view>
+              </view>
+              <view class="hero-copy">
+                <view class="status-pill" style="color:{{display.statusColor}};background:{{display.statusSoft}};border-color:{{display.statusColor}};">
+                  <view class="status-dot" style="background:{{display.statusColor}};"></view>
+                  <text class="status-label">{{display.statusLabel}}</text>
+                  <text class="status-zh">{{display.statusZh}}</text>
+                </view>
+                <text class="hero-title">{{display.summary}}</text>
+                <text class="hero-desc">{{display.person ? '已检测到孩子，正在分析坐姿与身体偏移。' : '孩子暂时离开书桌，设备保持守护状态。'}}</text>
+                <view class="chips">
+                  <text class="chip {{display.alert ? 'chip-alert' : 'chip-ok'}}">{{display.alert ? '告警中' : '无告警'}}</text>
+                  <text wx:if="{{display.sedentary}}" class="chip chip-sedentary">久坐提醒</text>
+                  <text class="chip">issue {{display.issue}}</text>
+                  <text class="chip">seq {{display.seq}}</text>
+                  <text class="chip">{{display.lastSeenLabel}}</text>
+                </view>
+              </view>
+            </view>
+            <view class="timeline-strip">
+              <view
+                class="timeline-seg"
+                wx:for="{{timelineSegments}}"
+                wx:key="index"
+                style="background:{{item.color}};opacity:{{item.opacity}};"
+              ></view>
+            </view>
+            <view class="device-meta">
+              <text>uptime {{uptimeText}}</text>
+              <text>fw {{firmwareText}}</text>
+              <text>report {{reportInterval}}s</text>
+            </view>
+          </view>
+
+          <view class="card">
+            <view class="card-head">
+              <text class="kicker">CAMERA / POSTURE VISION</text>
+              <text class="card-title">孩子的实时坐姿画面</text>
+              <text class="card-sub">本地 MediaPipe 关键点识别 · 标注图自动上传</text>
+            </view>
+            <view class="frame-tags">
+              <text class="tag">AI 姿态标注</text>
+              <text class="tag tag-green">SNAPSHOT</text>
+              <text class="frame-count">{{frames.length}} FRAMES</text>
+            </view>
+            <view class="frame-stage" bindtap="previewFrame">
+              <image wx:if="{{frameImage}}" class="frame-image" src="{{frameImage}}" mode="widthFix"></image>
+              <view wx:else class="frame-empty">
+                <text class="frame-empty-icon">▣</text>
+                <text class="frame-empty-title">{{frameLoading ? '正在加载标注画面…' : '还没有标注画面'}}</text>
+                <text class="frame-empty-hint">本地识别服务生成 _annotated.jpg 后自动上传</text>
+              </view>
+              <view wx:if="{{frameImage}}" class="frame-overlay">
+                <text class="overlay-status" style="color:{{frameStatusColor}};">{{frameStatusZh}}</text>
+                <text class="overlay-summary">{{frameSummary}}</text>
+                <text class="overlay-time">{{frameTime}}</text>
+              </view>
+            </view>
+            <text wx:if="{{frameError}}" class="error-text">{{frameError}}</text>
+            <scroll-view wx:if="{{framesView.length > 0}}" class="frame-strip" scroll-x="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}">
+              <view
+                class="frame-item {{item.selected ? 'selected' : ''}}"
+                wx:for="{{framesView}}"
+                wx:key="id"
+                data-id="{{item.id}}"
+                bindtap="onSelectFrame"
+              >
+                <view class="frame-item-top">
+                  <view class="frame-dot" style="background:{{item.color}};"></view>
+                  <text>{{item.time}}</text>
+                </view>
+                <text class="frame-item-status">{{item.status}}</text>
+              </view>
+            </scroll-view>
+          </view>
+
+          <view class="card">
+            <view class="card-head">
+              <text class="kicker">GROWTH / SCORE</text>
+              <text class="card-title">成长守护评分</text>
+              <text class="card-sub">最近 24 小时 · 坐姿 + 环境综合评估</text>
+            </view>
+            <view class="score-row">
+              <view class="score-ring" style="background: conic-gradient({{scoreColor}} {{score}}%, rgba(148,163,184,0.13) 0);">
+                <view class="score-ring-inner">
+                  <text class="score-num" style="color:{{scoreColor}};">{{score}}</text>
+                  <text class="score-label">成长评分</text>
+                </view>
+              </view>
+              <view class="score-copy">
+                <text class="score-level" style="color:{{scoreColor}};border-color:{{scoreColor}};">{{levelLabel}}</text>
+                <text class="score-headline">{{aiHeadline}}</text>
+                <text class="score-summary">{{aiSummary}}</text>
+                <button class="btn-primary btn-small {{aiLoading ? 'is-disabled' : ''}}" bindtap="generateReport">
+                  {{aiLoading ? 'AI 正在分析…' : aiReport ? '重新生成 AI 报告' : '生成 AI 健康报告'}}
+                </button>
+              </view>
+            </view>
+            <view class="mini-grid">
+              <view class="mini-stat" wx:for="{{kpis}}" wx:key="label">
+                <text class="mini-label">{{item.label}}</text>
+                <text class="mini-value" style="color:{{item.accent}};">{{item.value}}</text>
+                <text class="mini-hint">{{item.hint}}</text>
+              </view>
+            </view>
+            <text wx:if="{{aiError}}" class="error-text">{{aiError}}</text>
+          </view>
+
+          <view class="metric-grid">
+            <view class="metric-card" wx:for="{{metrics}}" wx:key="label">
+              <view class="metric-head">
+                <text class="metric-icon" style="color:{{item.accent}};">{{item.icon}}</text>
+                <text class="metric-label">{{item.label}}</text>
+                <text wx:if="{{item.live}}" class="live-mini">LIVE</text>
+              </view>
+              <view class="metric-value-row">
+                <text class="metric-value">{{item.value}}</text>
+                <text class="metric-unit">{{item.unit}}</text>
+              </view>
+              <text class="metric-hint">{{item.hint}}</text>
+            </view>
+          </view>
+
+          <view class="card">
+            <view class="card-head">
+              <text class="kicker">ENVIRONMENT / LIGHT</text>
+              <text class="card-title">桌面光照</text>
+              <text class="card-sub">最近 {{range}} · {{range === '1H' || range === '6H' ? '每分钟聚合' : '每小时聚合'}}</text>
+            </view>
+            <view class="light-head">
+              <text class="light-trace">LIGHT TRACE</text>
+              <text class="light-count">{{lightValues.length}} 个聚合点</text>
+            </view>
+            <line-chart points="{{lightValues}}" color="#22d3ee" height="{{130}}"></line-chart>
+            <view class="chart-stats">
+              <view class="chart-stat"><text class="stat-label">NOW</text><text class="stat-value">{{lightNow}}</text></view>
+              <view class="chart-stat"><text class="stat-label">AVG</text><text class="stat-value">{{lightAvg}}</text></view>
+              <view class="chart-stat"><text class="stat-label">PEAK</text><text class="stat-value">{{lightPeak}}</text></view>
+            </view>
+          </view>
+
+          <view class="card">
+            <view class="card-head">
+              <text class="kicker">POSTURE / DISTRIBUTION</text>
+              <text class="card-title">坐姿分布</text>
+              <text class="card-sub">最近姿态样本占比 · 覆盖今日守护</text>
+            </view>
+            <view class="mix-bar">
+              <view
+                class="mix-seg"
+                wx:for="{{mixItems}}"
+                wx:key="key"
+                style="width:{{item.percent}}%;background:{{item.color}};"
+              ></view>
+            </view>
+            <view class="mix-legend">
+              <view class="mix-row" wx:for="{{mixItems}}" wx:key="key">
+                <view class="mix-dot" style="background:{{item.color}};"></view>
+                <text class="mix-name">{{item.label}}</text>
+                <text class="mix-count">{{item.count}}</text>
+                <text class="mix-percent">{{item.percent}}%</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="card">
+            <view class="card-head">
+              <text class="kicker">IOTDA / EVENT STREAM</text>
+              <text class="card-title">守护事件流</text>
+              <text class="card-sub">孩子的设备最近上报记录</text>
+            </view>
+            <view wx:if="{{eventsDisplay.length === 0}}" class="empty-text">等待 IoTDA 推送事件</view>
+            <view class="event-row" wx:for="{{eventsDisplay}}" wx:key="id">
+              <view class="event-dot" style="background:{{item.color}};"></view>
+              <view class="event-main">
+                <text class="event-title">{{item.title}}</text>
+                <text class="event-meta">{{item.time}} · {{item.ago}}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+      </block>
+
+      <!-- AI 报告 -->
+      <block wx:elif="{{activeTab === 'report'}}">
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">AI / GROWTH ADVISOR</text>
+            <text class="card-title">AI 健康报告</text>
+            <text class="card-sub">给家长的可执行建议 · 不是医疗诊断</text>
+          </view>
+
+          <view wx:if="{{aiLoading && !aiReport}}" class="loading-row">
+            <view class="spinner"></view>
+            <text>GPT-4o 正在阅读孩子的 24 小时数据…</text>
+          </view>
+
+          <block wx:elif="{{aiReport}}">
+            <view class="ai-hero">
+              <view class="ai-score" style="border-color:{{aiReport.scoreColor}};">
+                <text class="ai-score-num" style="color:{{aiReport.scoreColor}};">{{aiReport.score}}</text>
+                <text class="ai-score-label">综合评分</text>
+              </view>
+              <view class="ai-copy">
+                <view class="ai-level-row">
+                  <text class="ai-level">{{aiReport.levelLabel}}</text>
+                  <text class="ai-window">{{aiReport.hours}}H WINDOW</text>
+                </view>
+                <text class="ai-headline">{{aiReport.headline}}</text>
+                <text class="ai-summary">{{aiReport.summary}}</text>
+              </view>
+            </view>
+
+            <text class="section-title">关键发现</text>
+            <view class="finding" wx:for="{{aiFindings}}" wx:key="title">
+              <view class="finding-bar" style="background:{{item.color}};"></view>
+              <view class="finding-main">
+                <text class="finding-title">{{item.title}}</text>
+                <text class="finding-detail">{{item.detail}}</text>
+              </view>
+            </view>
+
+            <text class="section-title">高风险时段</text>
+            <view class="risk-chips">
+              <text class="risk-chip" wx:for="{{aiRiskWindows}}" wx:key="*this">{{item}}</text>
+            </view>
+
+            <text class="section-title">给家长的建议</text>
+            <view class="suggestion" wx:for="{{aiSuggestions}}" wx:key="*this">
+              <text class="suggestion-num">{{index + 1}}</text>
+              <text class="suggestion-text">{{item}}</text>
+            </view>
+
+            <view class="encouragement">♡ {{aiReport.encouragement}}</view>
+            <text class="disclaimer">{{aiReport.disclaimer}}</text>
+            <view class="ai-foot">
+              <text class="ai-source">{{aiSourceLabel}}</text>
+              <button class="btn-ghost btn-small" bindtap="generateReport">重新分析</button>
+            </view>
+          </block>
+
+          <block wx:else>
+            <view class="ai-cta">
+              <text class="empty-icon">✧</text>
+              <text class="empty-title">生成一份给家长的坐姿健康报告</text>
+              <text class="empty-desc">AI 会结合良好率、提醒次数、风险时段与光照，给出温和、可执行的建议。</text>
+              <text wx:if="{{aiError}}" class="error-text">{{aiError}}</text>
+              <button class="btn-primary btn-small" bindtap="generateReport">生成 AI 报告</button>
+            </view>
+          </block>
+        </view>
+
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">PATTERN / 7 × 24</text>
+            <text class="card-title">一周坐姿热力图</text>
+            <text class="card-sub">按星期与小时聚合 · 颜色越深问题越集中</text>
+          </view>
+          <view class="heat-tabs">
+            <text
+              class="heat-tab {{heatMetric === item.key ? 'active' : ''}}"
+              wx:for="{{metricOptions}}"
+              wx:key="key"
+              data-key="{{item.key}}"
+              bindtap="onHeatMetric"
+            >{{item.label}}</text>
+            <text class="heat-note">7 天聚合</text>
+          </view>
+          <heatmap cells="{{heatmapCells}}" metric="{{heatMetric}}" bindcelltap="onHeatCellTap"></heatmap>
+          <view class="risk-note">
+            <text class="risk-note-icon">⚠</text>
+            <text class="risk-note-text">{{riskText}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 留言 -->
+      <block wx:elif="{{activeTab === 'messages'}}">
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">FAMILY / MESSAGES</text>
+            <text class="card-title">家庭留言</text>
+            <text class="card-sub">家长和孩子的话会出现在 ESP 屏幕上 · 已送达会标记</text>
+          </view>
+          <view wx:if="{{messagesDisplay.length === 0}}" class="empty-text">还没有家庭留言，写一句鼓励的话吧。</view>
+          <view wx:else class="message-list">
+            <view class="message-row {{item.author}}" wx:for="{{messagesDisplay}}" wx:key="id">
+              <view class="message-avatar {{item.author}}">{{item.author === 'parent' ? '妈' : '宇'}}</view>
+              <view class="message-main">
+                <view class="message-head">
+                  <text class="message-author">{{item.authorName}}</text>
+                  <text class="message-role-tag">{{item.author === 'parent' ? '家长' : '孩子'}}</text>
+                  <text class="message-time">{{item.ago}}</text>
+                </view>
+                <text class="message-content">{{item.content}}</text>
+                <text class="message-delivered">{{item.deliveredLabel}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="message-role-row">
+            <text class="message-role {{messageRole === 'parent' ? 'active' : ''}}" data-role="parent" bindtap="onMessageRole">家长 · 妈妈</text>
+            <text class="message-role {{messageRole === 'child' ? 'active' : ''}}" data-role="child" bindtap="onMessageRole">孩子 · 小宇</text>
+          </view>
+          <textarea class="message-textarea" value="{{messageDraft}}" maxlength="500" placeholder="写一句留言…" bindinput="onMessageInput"></textarea>
+          <view class="message-compose-foot">
+            <text class="message-count">{{messageDraft.length}}/500</text>
+            <button class="btn-primary btn-small" bindtap="sendMessage">{{messageSending ? '发送中…' : '发送'}}</button>
+          </view>
+          <text wx:if="{{messageError}}" class="error-text">{{messageError}}</text>
+          <text class="message-hint">ESP 每 10 秒左右拉取一次；留言会显示在表情屏底部。</text>
+        </view>
+      </block>
+
+      <!-- 回放 -->
+      <block wx:elif="{{activeTab === 'replay'}}">
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">REPLAY / 24H</text>
+            <text class="card-title">24 小时时间回放</text>
+            <text class="card-sub">拖动时间轴，回看孩子今天的坐姿变化</text>
+          </view>
+          <view wx:if="{{timeline.length === 0}}" class="empty-text">还没有可回放的数据</view>
+          <block wx:else>
+            <view class="replay-now">
+              <view class="replay-time-block">
+                <text class="replay-label">{{replayActive ? 'REPLAY TIME' : 'LATEST SAMPLES'}}</text>
+                <text class="replay-clock">{{replayTime}}</text>
+                <text class="replay-sub">第 {{replayDisplayIndex + 1}} / {{timeline.length}} 个采样点</text>
+              </view>
+              <view class="replay-status">
+                <view class="replay-dot" style="background:{{replayStatusColor}};"></view>
+                <text class="replay-status-label" style="color:{{replayStatusColor}};">{{replayStatusLabel}}</text>
+                <text class="replay-status-zh">{{replayStatus === 'good' ? '坐姿良好' : replayStatus === 'warning' ? '坐姿偏移' : replayStatus === 'bad' ? '坐姿异常' : '暂时离开'}}</text>
+              </view>
+            </view>
+            <slider
+              min="0"
+              max="{{replayMax}}"
+              value="{{replayDisplayIndex}}"
+              activeColor="#22d3ee"
+              backgroundColor="#1a94a3b8"
+              block-color="#22d3ee"
+              block-size="20"
+              bindchange="onReplaySlider"
+              bindchanging="onReplaySlider"
+            ></slider>
+            <view class="replay-chips">
+              <text class="chip chip-light">光照 {{replayLight}}%</text>
+              <text class="chip">{{replayPerson ? '在座' : '离开'}}</text>
+              <text class="chip {{replayAlert ? 'chip-alert' : 'chip-ok'}}">{{replayAlert ? '坐姿提醒' : '无提醒'}}</text>
+            </view>
+            <line-chart points="{{replayValues}}" color="#22d3ee" height="{{88}}"></line-chart>
+            <view class="replay-segments">
+              <view
+                class="replay-seg"
+                wx:for="{{replaySegments}}"
+                wx:key="index"
+                style="background:{{item.color}};opacity:{{item.opacity}};"
+                data-index="{{item.index}}"
+                bindtap="onReplayPointTap"
+              ></view>
+            </view>
+            <view class="replay-actions">
+              <button wx:if="{{!replayActive}}" class="btn-primary btn-small" bindtap="startReplay">开始回放</button>
+              <block wx:else>
+                <button class="btn-primary btn-small" bindtap="toggleReplayPlaying">{{replayPlaying ? '暂停' : '继续'}}</button>
+                <button class="btn-ghost btn-small" bindtap="exitReplay">回到实时</button>
+              </block>
+              <text class="replay-speed">每 220ms 前进 5 分钟</text>
+            </view>
+          </block>
+        </view>
+
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">TIMELINE / SAMPLES</text>
+            <text class="card-title">回放采样点</text>
+            <text class="card-sub">点击任意采样点跳转</text>
+          </view>
+          <view
+            class="replay-point"
+            wx:for="{{replayVisible}}"
+            wx:key="index"
+            data-index="{{item.index}}"
+            bindtap="onReplayPointTap"
+          >
+            <view class="replay-dot" style="background:{{item.statusColor}};"></view>
+            <text class="replay-point-time">{{item.time}}</text>
+            <text class="replay-point-status" style="color:{{item.statusColor}};">{{item.statusZh}}</text>
+            <text class="replay-point-light">{{item.light}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 演示 -->
+      <block wx:elif="{{activeTab === 'demo'}}">
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">DEMO / SCENARIO</text>
+            <text class="card-title">演示控制台</text>
+            <text class="card-sub">通过真实 IoTDA 事件路径写入 Postgres，不是前端假状态</text>
+          </view>
+          <text class="demo-intro">点击场景按钮，后端会生成一条设备属性事件，经过 Parse → Ingest 后写入数据库。</text>
+          <view class="demo-grid">
+            <view
+              class="demo-btn {{demoBusy ? 'is-disabled' : ''}}"
+              wx:for="{{demoScenarios}}"
+              wx:key="key"
+              data-key="{{item.key}}"
+              bindtap="onDemoTap"
+            >
+              <text class="demo-icon" style="color:{{item.color}};">{{item.icon}}</text>
+              <view class="demo-copy">
+                <text class="demo-label">{{item.label}}</text>
+                <text class="demo-hint">{{item.hint}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="demo-auto">
+            <view class="demo-auto-copy">
+              <text class="demo-auto-title">自动演示</text>
+              <text class="demo-auto-hint">每 5 秒循环注入</text>
+            </view>
+            <switch checked="{{autoDemo}}" color="#22d3ee" bindchange="onAutoDemoChange" />
+          </view>
+          <view wx:if="{{demoMessage}}" class="demo-message">{{demoMessage}}</view>
+        </view>
+
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">CONNECTION</text>
+            <text class="card-title">数据连接</text>
+            <text class="card-sub">真机通过局域网访问 Mac 上的 Go 服务</text>
+          </view>
+          <view class="info-row"><text class="info-label">API Base URL</text><text class="info-value">{{apiBaseUrl}}</text></view>
+          <view class="info-row"><text class="info-label">API Token</text><text class="info-value">{{tokenMasked}}</text></view>
+          <view class="info-actions">
+            <button class="btn-primary btn-small" bindtap="openSettings">打开设置</button>
+            <button class="btn-ghost btn-small" bindtap="onRefresh">立即刷新</button>
+          </view>
+          <view class="auto-refresh-row">
+            <text class="auto-refresh-label">每 5 秒自动刷新</text>
+            <switch checked="{{autoRefresh}}" color="#22d3ee" bindchange="onAutoRefreshChange" />
+          </view>
+        </view>
+
+        <view class="card">
+          <view class="card-head">
+            <text class="kicker">MINI PROGRAM / NATIVE</text>
+            <text class="card-title">小程序原生能力</text>
+            <text class="card-sub">全部是 WXML / WXSS / JS 原生实现</text>
+          </view>
+          <view class="native-row" wx:for="{{nativeItems}}" wx:key="title">
+            <text class="native-icon">{{item.icon}}</text>
+            <view class="native-copy">
+              <text class="native-title">{{item.title}}</text>
+              <text class="native-detail">{{item.detail}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view class="footer-note">成长守护 · ESP32-S3 · 华为云 IoTDA · GPT-4o</view>
+    </view>
+  </scroll-view>
+
+  <view class="bottom-nav">
+    <view
+      class="bottom-item {{activeTab === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchTab"
+    >
+      <text class="bottom-icon">{{item.icon}}</text>
+      <text class="bottom-label">{{item.label}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showSettings}}" class="sheet-mask" bindtap="closeSettings">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-head">
+        <view class="sheet-title-wrap">
+          <text class="sheet-kicker">CONNECTION</text>
+          <text class="sheet-title">连接设置</text>
+          <text class="sheet-sub">真机与 Mac 需在同一网络；Go 服务监听 0.0.0.0:11294</text>
+        </view>
+        <text class="sheet-close" bindtap="closeSettings">×</text>
+      </view>
+      <view class="field">
+        <text class="field-label">API Base URL</text>
+        <input class="field-input" value="{{editBaseUrl}}" placeholder="{{apiBaseUrl}}" bindinput="onBaseInput" />
+      </view>
+      <view class="field">
+        <text class="field-label">API Token</text>
+        <input class="field-input" password="{{true}}" value="{{editToken}}" placeholder="test-api-token" bindinput="onTokenInput" />
+      </view>
+      <text class="sheet-hint">提示：当前后端已开启 DEMO_ENABLED，可在“演示”页注入场景。</text>
+      <view class="sheet-actions">
+        <button class="btn-ghost" bindtap="closeSettings">取消</button>
+        <button class="btn-primary" bindtap="saveSettings">保存并刷新</button>
+      </view>
+    </view>
+  </view>
+</view>

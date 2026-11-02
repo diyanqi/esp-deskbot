@@ -1,0 +1,123 @@
+---
+title: Console 交互
+description: 串口 REPL：会话、问答、文件、cap 与自动化调试命令。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import { LinkCard } from 'starlight-theme-nova/components'
+
+将开发板通过 USB 连到电脑，使用 `idf.py monitor`、`minicom` 或[在线烧录工具](@lang/flash)自带的 Console，进入 `edge_agent` 的交互提示符（默认 `app> `）。
+
+<Aside type="tip">
+  能看到日志但敲不了命令？
+  - 板子若同时有 UART 与 USB-Serial JTAG，尝试切换到另一个接口。
+  - 单 USB 口设备可换用名称带有 `Serial JTAG` 的固件变体，或 [从源码编译与烧录](@lang/reference-project/build-from-source) 并调整 `Channel for console output` menuconfig 项。
+</Aside>
+
+## 会话与问答
+
+### 切换 session
+
+不同 `session` 使用不同的会话历史文件（见 [Memory](@lang/reference-project/memory/)）。长期记忆数据仍在共享的 `memory/` 目录中管理。
+
+```sh
+session demo
+session
+```
+
+### 与 LLM 对话
+
+使用 `ask` 可以与 LLM 发起多轮对话。添加 `--once` 可以发起不使用会话历史的单轮对话。
+
+```sh
+ask 帮我列一下你可以做什么
+ask --once 这是一次性问题，不要带历史
+```
+
+<Aside type="tip">
+  若设备启动时未完整配置 LLM（缺 Key / model / backend_type），`claw_core` 不会初始化，此时 `ask` 会失败。
+  见[配置说明](@lang/reference-project/configuration)了解配置 LLM 需要的参数。
+</Aside>
+
+## 能力 cap
+
+### 列出能力
+
+```sh
+cap list
+```
+
+### 调用能力
+
+第二个参数必须是合法 JSON 字符串（注意引号转义）。
+
+```sh
+cap call get_current_time '{}'
+cap call list_dir '{"keyword":"scripts"}'
+```
+
+### 查看能力组
+
+一个 Capability 可能提供大量 Tools，这些 Tools 会被组织成一个或多个 Group。
+
+```sh
+cap groups
+```
+
+## 文件列表
+
+`ls` 递归列出 DATA 和 SYSTEM 根目录中的文件，可选参数用于按路径关键字过滤。
+
+```sh
+ls
+ls scripts
+```
+
+## 技能 skill
+
+`skill` 列出当前 Skill 目录；添加 `--reload` 会先重新扫描目录。
+
+```sh
+skill
+skill --reload
+```
+
+## 自动化 router
+
+```sh
+router --reload
+router --rules
+router --last
+```
+
+<LinkCard
+  href="@lang/reference-project/dataflow-and-automation#event-router-提供的-console-命令"
+  title="数据流与自动化"
+  description="更多命令、详细用法见此文档"
+/>
+
+
+## 硬件资源 hwmap
+
+`hwmap` 显示已注册资源及其使用者；`hwmap query <key>` 查询单项。`EXCLUSIVE` 最多允许一个凭证，`SHARED` 允许多个凭证；`USERS` 为当前使用数，`CLAIM` 为使用凭证编号。已注册但空闲的资源显示 `(free)`，未注册的 key 返回错误。
+
+```sh
+hwmap
+hwmap query gpio:1
+hwmap query bus:i2c0
+hwmap query device:display_lcd
+```
+
+启动时注册资源目录，Board Manager 实际初始化驱动时才申请占用，驱动销毁成功后释放。Flash、PSRAM、控制台等系统资源不在注册表保护范围内。共享入口只允许复用现有硬件对象，不保证任意并发操作都安全。
+
+## 其它已注册的命令
+
+根据编译配置，`edge_agent` 还可注册 `lua`、`scheduler`、`router`、`skill`、`hwmap` 和 `wifi`。
+在 Console 中输入 `help` 可浏览所有命令。
+
+## 系统配置
+
+运行时改 Wi‑Fi、LLM 等，用 Web 往往更顺手：
+
+<LinkCard href="@lang/tutorial/web-config" title="Web 配置" icon="laptop" description="局域网浏览器修改设置与文件" />
+<LinkCard href="@lang/reference-project/configuration" title="配置说明" icon="settings" description="NVS 键与生效方式" />

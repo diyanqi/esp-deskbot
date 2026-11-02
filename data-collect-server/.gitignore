@@ -1,0 +1,7 @@
+# Local secrets and runtime artifacts
+.env
+certs/
+bin/
+*.log
+coverage.out
+pgdata/

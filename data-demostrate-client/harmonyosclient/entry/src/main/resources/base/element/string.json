@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "成长守护 · 家长端坐姿健康看板"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "孩子的实时坐姿、成长评分与 AI 健康报告"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "成长守护"
+    }
+  ]
+}

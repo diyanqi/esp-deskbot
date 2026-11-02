@@ -1,0 +1,65 @@
+---
+title: cap_web_search
+description: 调用外部搜索 API 进行网络搜索的能力。
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+源码：<LinkToSource relativePath="components/claw_capabilities/cap_web_search/src/cap_web_search.c" /> ·
+头文件：<LinkToSource relativePath="components/claw_capabilities/cap_web_search/include/cap_web_search.h" /> ·
+Skill：<LinkToSource relativePath="components/claw_capabilities/cap_web_search/skills/cap_web_search/SKILL.md" />
+
+## 概述
+
+`cap_web_search` 向 LLM 暴露 `web_search` 工具，允许 Agent 通过明确选择的搜索服务执行网络搜索。当前支持 **Bocha**、**Tavily** 和 **Brave Search**。
+
+## 工具描述
+
+| 工具 ID | 说明 |
+|---------|------|
+| `web_search` | 搜索网络并返回简洁格式化结果 |
+
+### 输入参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `query` | string | ✅ | 搜索关键词 |
+
+### 返回值
+
+返回格式化的搜索结果文本，包含标题、摘要和链接。默认返回前 5 条结果。
+
+## 搜索提供商
+
+| 提供商 | NVS 配置项 | 说明 |
+|--------|-----------|------|
+| Bocha | `bocha_key` | 博查网页搜索，返回摘要 |
+| Tavily | `tavily_key` | 新配置默认选择 |
+| Brave Search | `brave_key` | Brave 网页搜索 |
+
+在网页设置中选择搜索服务（`search_provider`：`bocha` / `tavily` / `brave`），填写对应 Key，保存并重启。旧配置未保存选择项时按原规则保留 Tavily 或 Brave；保存后固定使用所选服务。
+
+<Aside type="note">
+  所选服务必须配置 API Key。缺少 Key 或请求失败时返回错误，不会自动切换到其他服务。
+</Aside>
+
+## 注册与配置
+
+```c
+#include "cap_web_search.h"
+
+ESP_ERROR_CHECK(cap_web_search_set_provider("bocha"));
+ESP_ERROR_CHECK(cap_web_search_set_bocha_key("your-api-key"));
+ESP_ERROR_CHECK(cap_web_search_register_group());
+```
+
+API Key 通常在应用层从 NVS 读取后调用相应的 `set_*_key` 函数设置。
+
+## Group 信息
+
+| 属性 | 值 |
+|------|------|
+| Group ID | `cap_web_search` |
+| 默认 LLM 可见 | ✅（`edge_agent` 默认初始可见组） |
+| 工具数量 | 1 |

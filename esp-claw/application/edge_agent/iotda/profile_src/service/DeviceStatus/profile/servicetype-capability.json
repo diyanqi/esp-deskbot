@@ -1,0 +1,164 @@
+{
+  "services": [
+    {
+      "serviceType": "DeviceStatus",
+      "description": "设备运行状态与云端命令",
+      "commands": [
+        {
+          "commandName": "SET_REPORT_INTERVAL",
+          "paras": [
+            {
+              "paraName": "interval",
+              "dataType": "int",
+              "required": true,
+              "min": 5,
+              "max": 3600,
+              "step": 1,
+              "maxLength": 0,
+              "unit": "s",
+              "enumList": null
+            }
+          ],
+          "responses": [
+            {
+              "responseName": "SET_REPORT_INTERVAL_RSP",
+              "paras": [
+                {
+                  "paraName": "result",
+                  "dataType": "int",
+                  "required": true,
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "maxLength": 0,
+                  "unit": null,
+                  "enumList": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "commandName": "TRIGGER_REMINDER",
+          "paras": [
+            {
+              "paraName": "reason",
+              "dataType": "string",
+              "required": false,
+              "min": 0,
+              "max": 0,
+              "step": 0,
+              "maxLength": 64,
+              "unit": null,
+              "enumList": null
+            }
+          ],
+          "responses": [
+            {
+              "responseName": "TRIGGER_REMINDER_RSP",
+              "paras": [
+                {
+                  "paraName": "result",
+                  "dataType": "int",
+                  "required": true,
+                  "min": 0,
+                  "max": 1,
+                  "step": 1,
+                  "maxLength": 0,
+                  "unit": null,
+                  "enumList": null
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": [
+        {
+          "propertyName": "wifiConnected",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 1,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "rssi",
+          "dataType": "int",
+          "required": false,
+          "min": -100,
+          "max": 0,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": "dBm",
+          "enumList": null
+        },
+        {
+          "propertyName": "uptime",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": "s",
+          "enumList": null
+        },
+        {
+          "propertyName": "freeHeap",
+          "dataType": "int",
+          "required": true,
+          "min": 0,
+          "max": 2147483647,
+          "step": 1,
+          "maxLength": 0,
+          "method": "R",
+          "unit": "byte",
+          "enumList": null
+        },
+        {
+          "propertyName": "reportInterval",
+          "dataType": "int",
+          "required": true,
+          "min": 5,
+          "max": 3600,
+          "step": 1,
+          "maxLength": 0,
+          "method": "RW",
+          "unit": "s",
+          "enumList": null
+        },
+        {
+          "propertyName": "firmware",
+          "dataType": "string",
+          "required": true,
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "maxLength": 32,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        },
+        {
+          "propertyName": "lastReport",
+          "dataType": "DateTime",
+          "required": true,
+          "min": 0,
+          "max": 0,
+          "step": 0,
+          "maxLength": 20,
+          "method": "R",
+          "unit": null,
+          "enumList": null
+        }
+      ]
+    }
+  ]
+}

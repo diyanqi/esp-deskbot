@@ -1,0 +1,96 @@
+---
+title: cap_skill — Skill tools
+description: Skill activation, publication, removal, and per-session Capability Group visibility.
+---
+
+import LinkToSource from '@/components/LinkToSource.astro';
+import { Aside } from '@astrojs/starlight/components';
+
+Source: <LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/src/cap_skill_mgr.c" /> · Header: <LinkToSource relativePath="components/claw_capabilities/cap_skill_mgr/include/cap_skill_mgr.h" />
+
+## Role
+
+`cap_skill_mgr` adapts `claw_skill` operations into tools. `claw_skill` owns file scanning, validation, the registry, and per-session activation state. The Capability layer parses tool input, synchronizes tool visibility, and formats results.
+
+## Tool groups
+
+| Group | Tool | LLM visibility | Purpose |
+|---|---|---|---|
+| `cap_skill` | `activate_skill` | Visible by default | Load Skill instructions and expose its `metadata.cap_groups` for the current session |
+| `cap_skill` | `list_skill` | Hidden | Return the full catalog to Console or internal callers |
+| `cap_skill_manage` | `publish_skill` | Visible after activating a management Skill | Validate a runtime Skill already written to DATA and refresh the registry |
+| `cap_skill_manage` | `remove_skill` | Visible after activating a management Skill | Recursively remove an entire runtime Skill directory and refresh the registry |
+
+Ordinary sessions only need `activate_skill`. Management Skills such as `skill_creator` and `skills_lab_downloader` declare `cap_skill_manage` to expose publication and removal only when needed.
+
+## `activate_skill`
+
+Input:
+
+```json
+{"skill_id":"light_switch"}
+```
+
+The tool reads the complete Skill document, persists activation for the current session, synchronizes its Capability Groups, and returns:
+
+```xml
+<skill_content name="light_switch">
+...complete SKILL.md...
+</skill_content>
+```
+
+The document enters conversation history through the tool result. The system prompt keeps only the stable Skill catalog, preserving a cache-friendly prompt prefix.
+
+## `publish_skill`
+
+`publish_skill` does not create or modify files. Write the complete Skill under the DATA root's `skills/<skill_id>/` before calling it:
+
+```json
+{"skill_id":"weather_alerts"}
+```
+
+The firmware derives the fixed document path from `skill_id`, reloads the registry, and verifies that the target belongs to the primary writable root. Creation and updates use the same idempotent publication flow; an update does not require removing the existing Skill first.
+
+A successful publication returns a fixed-size result so large metadata cannot make the tool report failure after the registry has already changed:
+
+```json
+{"ok":true,"skill_id":"weather_alerts"}
+```
+
+Apps and Skills use independent directories and registries. `publish_skill` does not create, update, or reload Apps.
+
+## `remove_skill`
+
+Input:
+
+```json
+{"skill_id":"weather_alerts"}
+```
+
+Only runtime Skills under the writable root may be removed; System Skills are rejected. The implementation directly removes the entire Skill directory recursively, including `SKILL.md`, scripts, references, and assets, then refreshes the registry. Apps use separate directories and are unaffected by Skill removal. The deletion is not transactional and is not rolled back; a filesystem error may leave the directory partially removed.
+
+Successful result:
+
+```json
+{"ok":true,"skill_id":"weather_alerts"}
+```
+
+<Aside type="caution">
+  `remove_skill` is destructive. To update a Skill, edit its files and call `publish_skill` directly; do not remove it first.
+</Aside>
+
+## Input constraints
+
+All three LLM tools use the same `skill_id` rules: 1–63 characters containing only ASCII letters, digits, underscores, and hyphens. Unknown input fields are rejected. The model neither needs nor may provide the derived `file` path.
+
+## Console
+
+After enabling the `skill` Console command:
+
+```sh
+skill --catalog
+skill --publish weather_alerts
+skill --remove weather_alerts
+skill --activate weather_alerts --session default
+skill --list --session default
+```

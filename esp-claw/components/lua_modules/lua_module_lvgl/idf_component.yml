@@ -1,0 +1,5 @@
+## IDF Component Manager Manifest File
+dependencies:
+  display_service:
+    path: ../../common/display_service
+  espressif/esp_lv_eaf_player: "^0.3"

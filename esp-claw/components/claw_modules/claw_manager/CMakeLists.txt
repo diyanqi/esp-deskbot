@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS
+        "src/claw_agent_mgr.c"
+        "src/claw_session_mgr.c"
+        "src/claw_session_catalog.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        claw_cap
+        claw_core
+        freertos
+)

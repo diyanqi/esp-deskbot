@@ -1,0 +1,14 @@
+idf_component_register(
+    SRCS
+        "src/lua_module_iotda.c"
+    INCLUDE_DIRS
+        "src"
+    REQUIRES
+        cap_lua
+        esp_app_format
+        esp_timer
+        esp_wifi
+        espressif__cjson
+        mbedtls
+        mqtt
+)
